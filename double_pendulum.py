@@ -1,7 +1,7 @@
 import numpy as np
 import cvxpy as cp
 import matplotlib.pyplot as plt
-
+from visualize import Plotter
 # --- System setup ---
 g = 9.81  # acceleration due to gravity (m/s^2)
 l1 = 1.0  # length of pendulum 1 (m)
@@ -31,16 +31,15 @@ nu = 1           # number of inputs = 1
 N = 10
 
 # Constraints
-u_max = 5.0
-u_min = -5.0
+u_max = 20.0
+u_min = -20.0
 
 
 # Cost weights
-Q = np.diag([3.0, 1.0,3.0,1.0])  # State tracking cost
-R = 0.01                 # Input cost
+Q = np.diag([2.0,0.0,0.0,0.0])  # State tracking cost
+R = 0              # Input cost
 # Reference
-r = [np.pi/6,0,np.pi/6,0]                  # Desired position
-
+r = np.array([np.pi/6,0,np.pi/6,0] )
 # Initial state
 x0 = np.array([0, 0, 0, 0])    # Start at position=0, velocity=0
 
@@ -48,10 +47,11 @@ x0 = np.array([0, 0, 0, 0])    # Start at position=0, velocity=0
 sim_time = 5.0  # seconds
 steps = int(sim_time / dt)
 
+time = np.arange(0, sim_time, dt)
 # For storing simulation data
 x_history = []
 u_history = []
-
+cost_history = []
 x = x0.copy()
 
 for t in range(steps):
@@ -70,7 +70,7 @@ for t in range(steps):
         # Cost: state deviation from ref & input cost
         # We only care about position deviation from r for x1,
         # but we can penalize velocity as well to help settle
-        cost += cp.quad_form(X[:, k] - np.array([r]), Q)
+        cost += cp.quad_form(X[:, k] - r, Q)
         cost += R * cp.square(U[:, k])
         
         # System dynamics constraints
@@ -93,51 +93,15 @@ for t in range(steps):
     # Store data
     x_history.append(x.copy())
     u_history.append(u_opt)
-
+    cost_history.append(problem.value)
 x_history = np.array(x_history)
 tgrid = np.arange(steps) * dt
-
-# --- Plot results ---
-plt.figure(figsize=(10,4))
-plt.subplot(1,2,1)
-plt.plot(tgrid, x_history[:,0], label='Position')
-plt.axhline(r, color='r', linestyle='--', label='Ref position = 5')
-plt.xlabel('Time (s)')
-plt.ylabel('Position (m)')
-plt.title('Position Tracking')
-plt.legend()
-plt.grid(True)
-
-plt.subplot(1,2,2)
-plt.plot(tgrid, u_history, label='Control Input (accel)')
-plt.axhline(u_max, color='k', linestyle='--', label='u_max')
-plt.axhline(u_min, color='k', linestyle='--', label='u_min')
-plt.xlabel('Time (s)')
-plt.ylabel('Acceleration (m/s^2)')
-plt.title('Control Input')
-plt.legend()
-plt.grid(True)
-
-plt.tight_layout()
-plt.show()
-
-
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-
-# Example simulation data (replace with actual data)
-time = np.linspace(0, 5, 51)        # Time vector (0 to 5 seconds, 51 points)
-reference = 5.0 * np.ones_like(time)  # Constant reference position
-position = 5 - 3 * np.exp(-time)     # Simulated position (replace with actual simulation output)
-control = np.clip(2 * np.exp(-time), -5, 5)  # Simulated control input (replace with actual control)
 
 # Define evaluation functions
 def tracking_error(position, reference):
     """Compute tracking error (absolute)."""
     error = reference - position
-    return error
+    return np.mean(np.abs(error))
 
 def control_effort(control):
     """Compute total control effort (sum of absolute control values)."""
@@ -149,7 +113,7 @@ def settling_time(position, reference, time, tolerance=0.05):
     Calculate settling time.
     Time required for position to remain within a given tolerance around the reference.
     """
-    target_range = reference[0] * (1 - tolerance), reference[0] * (1 + tolerance)
+    target_range = reference * (1 - tolerance), reference * (1 + tolerance)
     within_tolerance = np.where((position >= target_range[0]) & (position <= target_range[1]))[0]
     if within_tolerance.size > 0:
         return time[within_tolerance[0]]
@@ -162,12 +126,12 @@ def overshoot(position, reference):
     Maximum deviation above the reference as a percentage of the reference.
     """
     max_pos = np.max(position)
-    os = (max_pos - reference[0]) / reference[0] * 100 if max_pos > reference[0] else 0
+    os = ((max_pos - reference) / (reference + 0.000001)) * 100 if max_pos > reference else 0
     return os
 
 def steady_state_error(position, reference):
     """Calculate steady-state error at the end of the simulation."""
-    return reference[-1] - position[-1]
+    return reference - position[-1]
 
 def check_constraints(control, control_min=-5, control_max=5):
     """Check for constraint violations."""
@@ -178,19 +142,68 @@ def check_constraints(control, control_min=-5, control_max=5):
     return violations
 
 # Evaluate performance
-error = tracking_error(position, reference)
-effort = control_effort(control)
-settling = settling_time(position, reference, time)
-os = overshoot(position, reference)
-ss_error = steady_state_error(position, reference)
-violations = check_constraints(control)
+pos_error1 = tracking_error(x_history[:,0], r[0])
+effort = control_effort(np.array(u_history))
+settling1 = settling_time(x_history[:,0], r[0], time)
+os1 = overshoot(x_history[:,0], r[0])
+ss_error1 = steady_state_error(x_history[:,0], r[0])
+violations = check_constraints(np.array(u_history))
+
+pos_error2 = tracking_error(x_history[:,2], r[2])
+settling2 = settling_time(x_history[:,2], r[2], time)
+ss_error2 = steady_state_error(x_history[:,2], r[2])
+os2 = overshoot(x_history[:,2], r[2])
 
 # Display results
 print("Performance Metrics:")
-print(f"Tracking Error (Final): {error[-1]:.4f}")
-print(f"Total Control Effort: {effort:.4f}")
-print(f"Settling Time: {settling:.4f} seconds")
-print(f"Overshoot: {os:.2f}%")
-print(f"Steady-State Error: {ss_error:.4f}")
-print(f"Constraint Violations: {violations}")
+print(f"Tracking Error theta 1: {pos_error1:.4f}")
+print(f"Settling Time theta 1: {settling1:.4f} seconds")
+print(f"Overshoot theta 1: {os1:.2f}%")
+print(f"Steady-State Error theta 1: {ss_error1:.4f}")
 
+print(f"Tracking Error theta 2: {pos_error2:.4f}")
+print(f"Settling Time theta 2: {settling2:.4f} seconds")
+print(f"Overshoot theta 2: {os2:.2f}%")
+print(f"Steady-State Error theta 2: {ss_error2:.4f}")
+
+print(f"Constraint Violations: {violations}")
+print(f"Total Control Effort: {effort:.4f}")
+print(f"Total Cost: {np.sum(cost_history):.4f}")
+
+# --- Plot results ---
+plt.figure(figsize=(10,4))
+plt.subplot(1,3,1)
+plt.plot(tgrid, x_history[:,0], label='Position')
+plt.axhline(r[0], color='r', linestyle='--', label='Ref position')
+plt.xlabel('Time (s)')
+plt.ylabel('Position (m)')
+plt.title('Position Tracking theta1')
+plt.legend()
+plt.grid(True)
+
+
+plt.subplot(1,3,2)
+plt.plot(tgrid, x_history[:,2], label='Position')
+plt.axhline(r[2], color='r', linestyle='--', label='Ref position')
+plt.xlabel('Time (s)')
+plt.ylabel('Position (m)')
+plt.title('Position Tracking theta2')
+plt.legend()
+plt.grid(True)
+
+
+plt.subplot(1,3,3)
+plt.plot(tgrid, u_history, label='Control Input (accel)')
+plt.axhline(u_max, color='k', linestyle='--', label='u_max')
+plt.axhline(u_min, color='k', linestyle='--', label='u_min')
+plt.xlabel('Time (s)')
+plt.ylabel('Acceleration (m/s^2)')
+plt.title('Control Input')
+plt.legend()
+plt.grid(True)
+
+plt.tight_layout()
+plt.show()
+
+plotter = Plotter(l1=l1, l2=l2, theta1_init=x_history[:,0], theta2_init=x_history[:,2], dt=0.1, t_max=5)
+plotter.animate()

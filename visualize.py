@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
 class Plotter:
-    def __init__(self, l1=1.0, l2=1.0, theta1_init=np.pi / 4, theta2_init=np.pi / 2, dt=0.05, t_max=10):
+    def __init__(self, l1=1.0, l2=1.0, theta1_init=np.pi / 4, theta2_init=np.pi / 2, dt=0.1, t_max=5):
         """
         Initialize the double pendulum plotter.
 
@@ -26,8 +26,8 @@ class Plotter:
         self.time = np.arange(0, t_max, dt)
 
         # Generate example angles (replace these with actual simulation data if needed)
-        self.theta1 = self.theta1_init * np.cos(2 * np.pi * self.time / t_max)
-        self.theta2 = self.theta2_init * np.sin(2 * np.pi * self.time / t_max)
+        self.theta1 = self.theta1_init 
+        self.theta2 = self.theta2_init 
 
         # Initialize plot
         self.fig, self.ax = plt.subplots(figsize=(6, 6))
@@ -35,6 +35,7 @@ class Plotter:
         self.ax.set_ylim(-2.5, 2.5)
         self.ax.set_aspect('equal')
         self.ax.grid()
+        
 
         # Plot elements
         self.line, = self.ax.plot([], [], 'o-', lw=2)
@@ -75,18 +76,14 @@ class Plotter:
         self.line.set_data([0, x1, x2], [0, y1, y2])
         self.bob1.set_data(x1, y1)
         self.bob2.set_data(x2, y2)
-
+        self.fig.suptitle(f'Time: {frame * self.dt:.1f} s')
         return self.line, self.bob1, self.bob2
 
     def animate(self):
         """Run the animation."""
         self.anim = FuncAnimation(
             self.fig, self.update_plot, frames=len(self.time), init_func=self.init_plot,
-            blit=True, interval=self.dt * 1000
+            blit=True, interval= self.dt * 1000, repeat=False
         )
+        
         plt.show()
-
-# Example usage
-if __name__ == "__main__":
-    plotter = Plotter()
-    plotter.animate()
