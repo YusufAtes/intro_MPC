@@ -37,7 +37,7 @@ u_min = -20.0
 
 # Cost weights
 Q = np.diag([2.0,0.0,0.0,0.0])  # State tracking cost
-R = 0              # Input cost
+R = 0.1              # Input cost
 # Reference
 r = np.array([np.pi/6,0,np.pi/6,0] )
 # Initial state
@@ -94,6 +94,7 @@ for t in range(steps):
     x_history.append(x.copy())
     u_history.append(u_opt)
     cost_history.append(problem.value)
+    
 x_history = np.array(x_history)
 tgrid = np.arange(steps) * dt
 
