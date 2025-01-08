@@ -85,5 +85,5 @@ class Plotter:
             self.fig, self.update_plot, frames=len(self.time), init_func=self.init_plot,
             blit=True, interval= self.dt * 1000, repeat=False
         )
-        
+        self.anim.save('double_pendulum.gif', writer='imagemagick')
         plt.show()

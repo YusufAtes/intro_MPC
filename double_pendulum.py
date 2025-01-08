@@ -31,15 +31,15 @@ nu = 1           # number of inputs = 1
 N = 10
 
 # Constraints
-u_max = 20.0
-u_min = -20.0
+u_max = 10.0
+u_min = -10.0
 
 
 # Cost weights
-Q = np.diag([2.0,0.0,0.0,0.0])  # State tracking cost
-R = 0.1              # Input cost
+Q = np.diag([2.0,0.0,10.0,0.0])  # State tracking cost
+R = 0.01             # Input cost
 # Reference
-r = np.array([np.pi/6,0,np.pi/6,0] )
+r = np.array([np.pi/8,0,np.pi/6,0] )
 # Initial state
 x0 = np.array([0, 0, 0, 0])    # Start at position=0, velocity=0
 
@@ -134,7 +134,7 @@ def steady_state_error(position, reference):
     """Calculate steady-state error at the end of the simulation."""
     return reference - position[-1]
 
-def check_constraints(control, control_min=-5, control_max=5):
+def check_constraints(control, control_min=-4.999, control_max=5.001):
     """Check for constraint violations."""
     violations = {
         "below_min": np.sum(control < control_min),
@@ -148,7 +148,7 @@ effort = control_effort(np.array(u_history))
 settling1 = settling_time(x_history[:,0], r[0], time)
 os1 = overshoot(x_history[:,0], r[0])
 ss_error1 = steady_state_error(x_history[:,0], r[0])
-violations = check_constraints(np.array(u_history))
+violations = check_constraints(np.array(u_history), u_min, u_max)
 
 pos_error2 = tracking_error(x_history[:,2], r[2])
 settling2 = settling_time(x_history[:,2], r[2], time)
