@@ -2,6 +2,9 @@ import numpy as np
 import cvxpy as cp
 import matplotlib.pyplot as plt
 from visualize import Plotter
+from double_pendulum_equations import theta1_update, theta2_update
+from double_pendulum_equations import pos_update, deriv
+from double_pendulum_equations import derivs
 # --- System setup ---
 g = 9.81  # acceleration due to gravity (m/s^2)
 l1 = 1.0  # length of pendulum 1 (m)
@@ -36,10 +39,10 @@ u_min = -10.0
 
 
 # Cost weights
-Q = np.diag([2.0,0.0,10.0,0.0])  # State tracking cost
+Q = np.diag([1.0,0.0,1.0,0.0])  # State tracking cost
 R = 0.01             # Input cost
 # Reference
-r = np.array([np.pi/8,0,np.pi/6,0] )
+r = np.array([np.pi/8,0.0,np.pi/6,0.0] )
 # Initial state
 x0 = np.array([0, 0, 0, 0])    # Start at position=0, velocity=0
 
@@ -84,12 +87,23 @@ for t in range(steps):
     
     # Solve the optimization
     problem = cp.Problem(cp.Minimize(cost), constraints)
-    problem.solve(solver=cp.OSQP, warm_start=True)
+    problem.solve(solver=cp.CLARABEL, warm_start=True)
     
     # Obtain the first control input and apply to the system
+    # if U.value is None:
+    #     u_opt = 0.0  # no control
+    # else:
     u_opt = U.value[0, 0]  # the optimal input at time k=0
-    x = A @ x + B @ np.array([u_opt])
-    
+    #x = A @ x + B @ np.array([u_opt])
+    # theta1 = x[0]
+    # theta2 = x[2]
+    # theta1_velocity = x[1]
+    # theta2_velocity = x[3]
+    # theta1, theta1_velocity = theta1_update(m1,m2,l1,l2,theta1,theta2,theta1_velocity,theta2_velocity,g,t,u_opt)
+    # theta2, theta2_velocity = theta2_update(m1,m2,l1,l2,theta1,theta2,theta1_velocity,theta2_velocity,g,t,u_opt)
+    # x = pos_update(deriv,x,time,l1,l2,m1,m2,g,u_opt)
+    x = x + derivs(x,m1,m2,l1,l2,g,u_opt) * dt
+
     # Store data
     x_history.append(x.copy())
     u_history.append(u_opt)
